@@ -75,7 +75,7 @@ Eventos preparados: PageView, ViewContent, StartDiagnostic, DiagnosticStep (núm
 - `/diagnostico-rural`: redireciona para `/`.
 - `/privacidade`: aviso básico, com link de contato para solicitações.
 
-Title, description, canonical, Open Graph textual e favicon em `app/`. O dashboard tem dados fictícios claramente identificados. A marca tipográfica e o favicon são provisórios e podem ser trocados pelos arquivos oficiais. Há ponto reservado no código para depoimentos reais futuros, sem provas sociais inventadas.
+Title, description, canonical, Open Graph textual e favicon em `app/`. O dashboard tem dados fictícios claramente identificados. O símbolo oficial foi obtido no cabeçalho de grupojung.com.br e é usado no cabeçalho, no questionário, no rodapé e no favicon. A origem está em public/brand/README.md. Há ponto reservado no código para depoimentos reais futuros, sem provas sociais inventadas.
 
 Antes da campanha, o escritório deve completar o aviso de privacidade com seus dados cadastrais, retenção e política oficial. Os textos não afirmam datas legais de prazo ou valores de imposto; a referência a abril é a mensagem comercial solicitada, não um prazo oficial de 2027.
 
@@ -99,3 +99,9 @@ Antes da campanha, o escritório deve completar o aviso de privacidade com seus 
 - `tests/diagnostic.test.ts`: testes de regras e serialização.
 
 A interface respeita preferência por movimento reduzido, possui labels, foco visível, botão de voltar, controles semânticos e fontes de 16 px nos campos para evitar zoom automático em celulares. Sem imagens pesadas ou fontes remotas; a demonstração é construída em HTML/CSS, sem carregamentos externos obrigatórios.
+
+## Experiência dedicada no celular
+
+Ao começar, o diagnóstico abre em um `dialog` modal nativo em tela cheia. O fundo fica inerte, com a posição da página preservada e a rolagem bloqueada. Cabeçalho e botões de avançar/voltar permanecem visíveis. As atividades ficam em duas colunas para caberem sem rolagem nas telas de celular.
+
+O resultado fecha o modo dedicado e libera a rolagem. O botão de sair e a tecla Escape permitem voltar à página sem perder as respostas durante a mesma visita. Em telas muito baixas, zoom de acessibilidade ou com teclado aberto, somente o conteúdo interno pode rolar para manter campos e opções acessíveis; a página de fundo permanece bloqueada. A altura se ajusta ao visualViewport e às áreas seguras do celular.

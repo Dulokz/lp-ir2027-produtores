@@ -1686,3 +1686,305 @@ small {
 .quiz-card {
   scroll-margin-top: 20px;
 }
+/* The campaign is designed for a phone: official identity, rural context,
+   and a focused diagnostic with a locked background. */
+.brand-official {
+  gap: 9px;
+}
+.brand-official img {
+  width: 46px;
+  height: 46px;
+  border-radius: 7px;
+  object-fit: contain;
+}
+.brand-official strong {
+  font-size: 17px;
+  color: #263e5e;
+  letter-spacing: 0.025em;
+}
+.brand-official small {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--forest);
+}
+.header {
+  background: #fff;
+}
+.header-area {
+  max-width: 120px;
+  line-height: 1.5;
+}
+.rural-signature {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--lime);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin-bottom: 20px;
+}
+.rural-signature svg {
+  color: #cbdbaa;
+}
+.rural-context {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 0 24px;
+  color: #d4e1c8;
+}
+.rural-context span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+}
+.hero-label {
+  font-size: 10px;
+  letter-spacing: 0.07em;
+}
+.quiz-dialog {
+  position: fixed;
+  inset: var(--quiz-top, 0px) 0 auto;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  width: 100%;
+  max-width: 600px;
+  height: var(--quiz-height, 100dvh);
+  max-height: 100dvh;
+  background: var(--cream);
+  color: var(--ink);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.quiz-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.quiz-dialog::backdrop {
+  background: #102b25cf;
+}
+.quiz-dialog-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  min-height: 68px;
+  padding: 8px 20px;
+  background: white;
+  border-bottom: 1px solid var(--line);
+}
+.quiz-dialog-brand .brand-official img {
+  width: 42px;
+  height: 42px;
+}
+.quiz-close {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  width: 44px;
+  background: none;
+  border: 0;
+  color: #627064;
+  border-radius: 50%;
+}
+.quiz-close:hover {
+  background: #eef2e8;
+}
+.quiz-dialog form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 20px 22px 0;
+  overflow: hidden;
+}
+.quiz-rural-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #567345;
+  font-size: 12px;
+  margin-bottom: 17px;
+  flex-shrink: 0;
+}
+.quiz-dialog .quiz-top {
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+.quiz-dialog .quiz-top > span:last-child {
+  font-size: 11px;
+}
+.quiz-dialog .progress {
+  flex: 0 0 4px;
+  margin: 12px 0 22px;
+}
+.quiz-dialog .question {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 3px 12px;
+  scrollbar-width: thin;
+}
+.quiz-dialog .question h3 {
+  font-size: 26px;
+  line-height: 1.2;
+}
+.quiz-dialog .question > p {
+  font-size: 13px;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+.quiz-dialog .options {
+  gap: 8px;
+  margin-top: 20px;
+}
+.quiz-dialog .options button {
+  min-height: 53px;
+  padding: 11px 12px;
+  font-size: 15px;
+  background: white;
+}
+.quiz-dialog .options button.selected {
+  background: #eaf2de;
+  border-color: var(--green);
+}
+.quiz-dialog .options.activities {
+  grid-template-columns: 1fr 1fr;
+}
+.quiz-dialog .options.activities button {
+  padding: 10px;
+  gap: 8px;
+}
+.quiz-dialog .options.activities button:last-child {
+  grid-column: 1 / -1;
+}
+.quiz-dialog .option-check {
+  width: 23px;
+  height: 23px;
+}
+.quiz-dialog .quiz-bottom {
+  flex: 0 0 auto;
+  margin: 0 -22px;
+  padding: 12px 22px max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: white;
+  gap: 15px;
+}
+.quiz-dialog .quiz-bottom .button {
+  min-height: 52px;
+  min-width: 160px;
+  font-size: 14px;
+}
+.quiz-dialog .quiz-bottom .text-button {
+  font-size: 14px;
+}
+.quiz-dialog .lead-fields {
+  gap: 15px;
+  margin-top: 20px;
+}
+.quiz-dialog .privacy-note {
+  font-size: 12px;
+}
+.quiz-dialog .lead-fields label {
+  font-size: 14px;
+}
+@media (max-width: 640px) {
+  .header {
+    height: 76px;
+    padding: 0 17px;
+  }
+  .header-area {
+    display: none;
+  }
+  .header .brand-official img {
+    width: 48px;
+    height: 48px;
+  }
+  .header .brand-official strong {
+    font-size: 20px;
+  }
+  .header .brand-official small {
+    font-size: 10px;
+  }
+  .hero-inner {
+    padding-top: 25px;
+  }
+  .rural-signature {
+    font-size: 9px;
+    margin-bottom: 18px;
+    gap: 7px;
+    letter-spacing: 0.045em;
+  }
+  .hero-label {
+    font-size: 9px;
+  }
+  .rural-context {
+    gap: 8px;
+    padding-bottom: 24px;
+  }
+  .rural-context span {
+    font-size: 10px;
+    gap: 5px;
+  }
+  .rural-context svg {
+    width: 18px;
+  }
+  .footer > .brand {
+    width: auto;
+  }
+  .footer .brand-official strong {
+    font-size: 17px;
+  }
+  .footer .brand-official small {
+    font-size: 9px;
+  }
+}
+@media (max-height: 740px) {
+  .quiz-dialog-brand {
+    min-height: 60px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .quiz-dialog form {
+    padding-top: 12px;
+  }
+  .quiz-rural-label {
+    margin-bottom: 11px;
+    font-size: 11px;
+  }
+  .quiz-dialog .progress {
+    margin: 10px 0 16px;
+  }
+  .quiz-dialog .question h3 {
+    font-size: 23px;
+  }
+  .quiz-dialog .question > p {
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  .quiz-dialog .options {
+    margin-top: 14px;
+    gap: 7px;
+  }
+  .quiz-dialog .options button {
+    min-height: 46px;
+    font-size: 14px;
+    padding: 10px 11px;
+  }
+  .quiz-dialog .quiz-bottom {
+    padding-top: 9px;
+    padding-bottom: max(9px, env(safe-area-inset-bottom));
+  }
+  .quiz-dialog .quiz-bottom .button {
+    min-height: 48px;
+  }
+}
+@media (max-height: 680px) {
+  .quiz-dialog .quiz-rural-label {
+    display: none;
+  }
+}

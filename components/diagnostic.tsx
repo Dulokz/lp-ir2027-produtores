@@ -8,6 +8,8 @@ import {
   MessageCircle,
   RotateCcw,
   LockKeyhole,
+  X,
+  Wheat,
 } from "lucide-react";
 import {
   questions,
@@ -18,12 +20,15 @@ import {
   type Lead,
 } from "@/lib/diagnostic";
 import { getUtms, track } from "./analytics";
+import Brand from "./brand";
 export default function Diagnostic({
   started,
   onStart,
+  onPause,
 }: {
   started: boolean;
   onStart: () => void;
+  onPause: () => void;
 }) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>(
@@ -41,10 +46,51 @@ export default function Diagnostic({
   const card = useRef<HTMLDivElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const busy = useRef(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const active = started && !done;
+  useEffect(() => {
+    if (!active || !dialog.current) return;
+    const element = dialog.current;
+    const scrollY = window.scrollY;
+    const bodyStyle = document.body.getAttribute("style");
+    const rootOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    Object.assign(document.body.style, {
+      position: "fixed",
+      top: `-${scrollY}px`,
+      width: "100%",
+      overflow: "hidden",
+    });
+    element.showModal();
+    const viewport = window.visualViewport;
+    const resize = () => {
+      element.style.setProperty(
+        "--quiz-height",
+        `${viewport?.height ?? window.innerHeight}px`,
+      );
+      element.style.setProperty("--quiz-top", `${viewport?.offsetTop ?? 0}px`);
+    };
+    resize();
+    viewport?.addEventListener("resize", resize);
+    viewport?.addEventListener("scroll", resize);
+    return () => {
+      viewport?.removeEventListener("resize", resize);
+      viewport?.removeEventListener("scroll", resize);
+      element.close();
+      if (bodyStyle === null) document.body.removeAttribute("style");
+      else document.body.setAttribute("style", bodyStyle);
+      document.documentElement.style.overflow = rootOverflow;
+      window.scrollTo({ top: scrollY, behavior: "instant" });
+    };
+  }, [active]);
   useEffect(() => {
     if (started) {
       title.current?.focus({ preventScroll: true });
-      card.current?.scrollIntoView({ block: "start", behavior: "instant" });
+      if (done)
+        card.current?.scrollIntoView({ block: "start", behavior: "instant" });
+      dialog.current
+        ?.querySelector(".question")
+        ?.scrollTo({ top: 0, behavior: "instant" });
     }
   }, [step, done, started]);
   const result = done ? diagnose(answers) : null;
@@ -206,170 +252,196 @@ export default function Diagnostic({
             </button>
           </div>
         ) : (
-          <form onSubmit={finish}>
-            <div className="quiz-top">
-              <span>
-                {step < 8 ? `PERGUNTA ${step + 1} DE 8` : "ÚLTIMO PASSO"}
-              </span>
-              <span>
-                {step < 8
-                  ? "Sobre sua atividade"
-                  : "Seu resultado está quase pronto"}
-              </span>
+          <dialog
+            ref={dialog}
+            className="quiz-dialog"
+            aria-labelledby="quiz-title"
+            onCancel={(e) => {
+              e.preventDefault();
+              onPause();
+            }}
+          >
+            <div className="quiz-dialog-brand">
+              <Brand />
+              <button
+                type="button"
+                className="quiz-close"
+                aria-label="Sair do diagnóstico e continuar depois"
+                onClick={onPause}
+              >
+                <X size={21} />
+              </button>
             </div>
-            <div
-              className="progress"
-              role="progressbar"
-              aria-label="Progresso do diagnóstico"
-              aria-valuemin={0}
-              aria-valuemax={9}
-              aria-valuenow={step}
-            >
-              <div style={{ width: `${(step / 9) * 100}%` }} />
-            </div>
-            <div className="question" key={step}>
-              <h3 ref={title} tabIndex={-1}>
-                {step < 8 ? questions[step].title : "Como podemos chamar você?"}
-              </h3>
-              <p>
-                {step === 7
-                  ? "Pode marcar mais de uma opção."
-                  : step < 8
-                    ? "Selecione a opção que mais combina com sua realidade."
-                    : "Preencha seus dados para ver o resultado e conversar com nossa equipe."}
-              </p>
-              {step < 8 ? (
-                <div
-                  className={`options ${step === 0 ? "activities" : ""}`}
-                  role="group"
-                  aria-label={questions[step].title}
-                >
-                  {questions[step].options.map((option, i) => (
-                    <button
-                      type="button"
-                      aria-pressed={answers[step].includes(i)}
-                      className={answers[step].includes(i) ? "selected" : ""}
-                      key={option}
-                      onClick={() => select(i)}
-                    >
-                      <span className="option-check">
-                        {answers[step].includes(i) ? (
-                          <Check size={15} />
-                        ) : (
-                          String.fromCharCode(65 + i)
-                        )}
-                      </span>
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="lead-fields">
-                  <label>
-                    Seu nome
-                    <input
-                      autoComplete="name"
-                      required
-                      minLength={2}
-                      maxLength={100}
-                      value={lead.name}
-                      onChange={(e) =>
-                        setLead({ ...lead, name: e.target.value })
-                      }
-                      placeholder="Como você gosta de ser chamado"
-                    />
-                  </label>
-                  <label>
-                    WhatsApp com DDD
-                    <input
-                      type="tel"
-                      inputMode="tel"
-                      autoComplete="tel"
-                      required
-                      maxLength={20}
-                      value={lead.phone}
-                      onChange={(e) =>
-                        setLead({ ...lead, phone: e.target.value })
-                      }
-                      placeholder="(49) 99999-9999"
-                    />
-                  </label>
-                  <div className="location-fields">
+            <form onSubmit={finish}>
+              <div className="quiz-rural-label">
+                <Wheat size={16} /> Diagnóstico fiscal do produtor rural
+              </div>
+              <div className="quiz-top">
+                <span>
+                  {step < 8 ? `PERGUNTA ${step + 1} DE 8` : "ÚLTIMO PASSO"}
+                </span>
+                <span>
+                  {step < 8
+                    ? "Sobre sua atividade"
+                    : "Seu resultado está quase pronto"}
+                </span>
+              </div>
+              <div
+                className="progress"
+                role="progressbar"
+                aria-label="Progresso do diagnóstico"
+                aria-valuemin={0}
+                aria-valuemax={9}
+                aria-valuenow={step}
+              >
+                <div style={{ width: `${(step / 9) * 100}%` }} />
+              </div>
+              <div className="question" key={step}>
+                <h3 id="quiz-title" ref={title} tabIndex={-1}>
+                  {step < 8
+                    ? questions[step].title
+                    : "Como podemos chamar você?"}
+                </h3>
+                <p>
+                  {step === 7
+                    ? "Pode marcar mais de uma opção."
+                    : step < 8
+                      ? "Selecione a opção que mais combina com sua realidade."
+                      : "Preencha seus dados para ver o resultado e conversar com nossa equipe."}
+                </p>
+                {step < 8 ? (
+                  <div
+                    className={`options ${step === 0 ? "activities" : ""}`}
+                    role="group"
+                    aria-label={questions[step].title}
+                  >
+                    {questions[step].options.map((option, i) => (
+                      <button
+                        type="button"
+                        aria-pressed={answers[step].includes(i)}
+                        className={answers[step].includes(i) ? "selected" : ""}
+                        key={option}
+                        onClick={() => select(i)}
+                      >
+                        <span className="option-check">
+                          {answers[step].includes(i) ? (
+                            <Check size={15} />
+                          ) : (
+                            String.fromCharCode(65 + i)
+                          )}
+                        </span>
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="lead-fields">
                     <label>
-                      Município
+                      Seu nome
                       <input
-                        autoComplete="address-level2"
+                        autoComplete="name"
                         required
                         minLength={2}
                         maxLength={100}
-                        value={lead.city}
+                        value={lead.name}
                         onChange={(e) =>
-                          setLead({ ...lead, city: e.target.value })
+                          setLead({ ...lead, name: e.target.value })
                         }
-                        placeholder="Seu município"
+                        placeholder="Como você gosta de ser chamado"
                       />
                     </label>
                     <label>
-                      Estado
-                      <select
-                        autoComplete="address-level1"
-                        value={lead.state}
+                      WhatsApp com DDD
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        required
+                        maxLength={20}
+                        value={lead.phone}
                         onChange={(e) =>
-                          setLead({ ...lead, state: e.target.value })
+                          setLead({ ...lead, phone: e.target.value })
                         }
-                      >
-                        {states.map((s) => (
-                          <option key={s}>{s}</option>
-                        ))}
-                      </select>
+                        placeholder="(49) 99999-9999"
+                      />
                     </label>
+                    <div className="location-fields">
+                      <label>
+                        Município
+                        <input
+                          autoComplete="address-level2"
+                          required
+                          minLength={2}
+                          maxLength={100}
+                          value={lead.city}
+                          onChange={(e) =>
+                            setLead({ ...lead, city: e.target.value })
+                          }
+                          placeholder="Seu município"
+                        />
+                      </label>
+                      <label>
+                        Estado
+                        <select
+                          autoComplete="address-level1"
+                          value={lead.state}
+                          onChange={(e) =>
+                            setLead({ ...lead, state: e.target.value })
+                          }
+                        >
+                          {states.map((s) => (
+                            <option key={s}>{s}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <p className="privacy-note">
+                      <LockKeyhole size={16} /> Seus dados serão utilizados
+                      apenas para contato sobre o diagnóstico e os serviços do
+                      Grupo Jung.{" "}
+                      <a
+                        href="/privacidade"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Privacidade
+                      </a>
+                    </p>
                   </div>
-                  <p className="privacy-note">
-                    <LockKeyhole size={16} /> Seus dados serão utilizados apenas
-                    para contato sobre o diagnóstico e os serviços do Grupo
-                    Jung.{" "}
-                    <a
-                      href="/privacidade"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Privacidade
-                    </a>
+                )}
+                {error && (
+                  <p role="alert" className="error">
+                    {error}
                   </p>
-                </div>
-              )}
-              {error && (
-                <p role="alert" className="error">
-                  {error}
-                </p>
-              )}
-            </div>
-            <div className="quiz-bottom">
-              <button
-                type="button"
-                className="text-button"
-                disabled={step === 0 || loading}
-                onClick={() => setStep((s) => s - 1)}
-              >
-                <ArrowLeft size={17} /> Voltar
-              </button>
-              {step < 8 ? (
+                )}
+              </div>
+              <div className="quiz-bottom">
                 <button
                   type="button"
-                  className="button"
-                  disabled={!answers[step].length}
-                  onClick={next}
+                  className="text-button"
+                  disabled={step === 0 || loading}
+                  onClick={() => setStep((s) => s - 1)}
                 >
-                  Continuar <ArrowRight size={18} />
+                  <ArrowLeft size={17} /> Voltar
                 </button>
-              ) : (
-                <button className="button" disabled={loading} type="submit">
-                  {loading ? "Preparando resultado…" : "Ver meu resultado"}
-                  <ArrowRight size={18} />
-                </button>
-              )}
-            </div>
-          </form>
+                {step < 8 ? (
+                  <button
+                    type="button"
+                    className="button"
+                    disabled={!answers[step].length}
+                    onClick={next}
+                  >
+                    Continuar <ArrowRight size={18} />
+                  </button>
+                ) : (
+                  <button className="button" disabled={loading} type="submit">
+                    {loading ? "Preparando resultado…" : "Ver meu resultado"}
+                    <ArrowRight size={18} />
+                  </button>
+                )}
+              </div>
+            </form>
+          </dialog>
         )}
       </div>
       <p className="under-quiz">

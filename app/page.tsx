@@ -20,6 +20,7 @@ import {
   Bird,
 } from "lucide-react";
 import Diagnostic from "@/components/diagnostic";
+import Brand from "@/components/brand";
 import Analytics, { track, getUtms } from "@/components/analytics";
 import { whatsappUrl } from "@/lib/diagnostic";
 const services = [
@@ -52,15 +53,14 @@ export default function Home() {
     if (!started) {
       setStarted(true);
       track("StartDiagnostic");
+      return;
     }
-    document
-      .getElementById("diagnostico")
-      ?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "instant"
-          : "smooth",
-        block: "start",
-      });
+    document.getElementById("diagnostico")?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+      block: "start",
+    });
   }
   function contact() {
     track("ContactWhatsApp", { placement: "footer" });
@@ -83,24 +83,20 @@ export default function Home() {
           href="/"
           aria-label="Grupo Jung Contabilidade — início"
         >
-          <span className="brand-mark">
-            <Sprout />
-          </span>
-          <span>
-            <strong>
-              GRUPO JUNG<span className="brand-dot">.</span>
-            </strong>
-            <small>CONTABILIDADE</small>
-          </span>
+          <Brand />
         </Link>
         <span className="header-area">
-          CONTABILIDADE RURAL <span className="tiny-dot" />
+          AO LADO DE QUEM PRODUZ <span className="tiny-dot" />
         </span>
       </header>
       <main id="main">
         <section className="hero">
           <div className="hero-inner">
             <div className="hero-copy">
+              <div className="rural-signature">
+                <Wheat size={18} />
+                <span>CONTABILIDADE PARA QUEM VIVE DO CAMPO</span>
+              </div>
               <span className="eyebrow hero-label">
                 <span className="tiny-dot" /> DIAGNÓSTICO FISCAL RURAL 2026
               </span>
@@ -130,6 +126,17 @@ export default function Home() {
               </div>
             </div>
             <div className="hero-visual">
+              <div className="rural-context">
+                <span>
+                  <Milk size={20} /> Da produção
+                </span>
+                <span>
+                  <FileText size={20} /> à nota fiscal
+                </span>
+                <span>
+                  <Tractor size={20} /> ao patrimônio
+                </span>
+              </div>
               <div className="year-tag">
                 <span>O ANO ACONTECE AGORA</span>
                 <strong>
@@ -220,7 +227,11 @@ export default function Home() {
             </span>
           </div>
         </div>
-        <Diagnostic started={started} onStart={start} />
+        <Diagnostic
+          started={started}
+          onStart={start}
+          onPause={() => setStarted(false)}
+        />
         <section className="year-section content-width">
           <div>
             <span className="eyebrow">
@@ -415,11 +426,7 @@ export default function Home() {
       </main>
       <footer className="footer">
         <Link className="brand" href="/">
-          <Sprout size={25} />
-          <span>
-            <strong>GRUPO JUNG.</strong>
-            <small>CONTABILIDADE RURAL</small>
-          </span>
+          <Brand />
         </Link>
         <span>© {new Date().getFullYear()} Grupo Jung Contabilidade</span>
         <a href="/privacidade">Privacidade</a>
