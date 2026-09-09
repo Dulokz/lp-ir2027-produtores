@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
+import Link from "next/link";
 import { ArrowRight, MessageCircle, ShieldCheck } from "lucide-react";
 import { diagnose, questions, whatsappUrl, type Answers } from "@/lib/diagnostic";
 import { getUtms } from "@/components/analytics";
@@ -30,10 +31,14 @@ function getStoredDiagnostic() {
 export default function DiagnosticResultPage() {
   const trackEvent = (analytics as unknown as { trackMetaEvent?: (event: string, data?: Record<string, unknown>) => void; track?: (event: string, data?: Record<string, unknown>) => void }).trackMetaEvent ?? (analytics as unknown as { track: (event: string, data?: Record<string, unknown>) => void }).track;
   const data = useSyncExternalStore(subscribe, getStoredDiagnostic, () => null);
-  useEffect(() => {
-    if (!data) window.location.replace("/");
-  }, [data]);
-  if (!data) return null;
+  if (!data) return <main className="result-page result-page-fallback">
+    <header className="result-page-header"><Brand /></header>
+    <section className="result-page-card">
+      <div className="result-page-icon"><ShieldCheck size={28} /></div><span className="eyebrow">DIAGNÓSTICO FISCAL RURAL</span><h1>Vamos entender sua situação em 4 perguntas.</h1>
+      <p>Responda agora e receba uma devolutiva com seu ponto de partida para 2027.</p>
+      <Link className="button result-page-cta" href="/">Ver minha situação agora <ArrowRight size={18} /></Link>
+    </section>
+  </main>;
   const result = data.mode === "quick" ? quickResult(data.answers) : diagnose(data.answers);
   const answerIndexes = data.mode === "quick" ? quickQuestionIndexes : questions.map((_, index) => index);
   const answerSummary = answerIndexes.map((index) => `${questions[index].title}\n${data.answers[index].map((option) => questions[index].options[option]).join(", ")}`).join("\n\n");
