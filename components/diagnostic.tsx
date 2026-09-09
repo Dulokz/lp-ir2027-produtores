@@ -22,11 +22,12 @@ export default function Diagnostic({ started, mode, onPause }: { started: boolea
   const title = useRef<HTMLHeadingElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const resultCard = useRef<HTMLElement>(null);
+  const active = started && !finished;
   const questionIndex = mode === "quick" ? quickQuestionIndexes[step] : step;
   const questionCount = mode === "quick" ? quickQuestionIndexes.length : questions.length;
 
   useEffect(() => {
-    if (!started || !dialog.current) return;
+    if (!active || !dialog.current) return;
     const element = dialog.current, scrollY = window.scrollY, bodyStyle = document.body.getAttribute("style"), rootOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = "hidden";
     Object.assign(document.body.style, { position: "fixed", top: `-${scrollY}px`, width: "100%", overflow: "hidden" });
@@ -35,8 +36,8 @@ export default function Diagnostic({ started, mode, onPause }: { started: boolea
     const resize = () => { element.style.setProperty("--quiz-height", `${viewport?.height ?? window.innerHeight}px`); element.style.setProperty("--quiz-top", `${viewport?.offsetTop ?? 0}px`); };
     resize(); viewport?.addEventListener("resize", resize); viewport?.addEventListener("scroll", resize);
     return () => { viewport?.removeEventListener("resize", resize); viewport?.removeEventListener("scroll", resize); element.close(); if (bodyStyle === null) document.body.removeAttribute("style"); else document.body.setAttribute("style", bodyStyle); document.documentElement.style.overflow = rootOverflow; window.scrollTo({ top: scrollY, behavior: "instant" }); };
-  }, [started]);
-  useEffect(() => { if (started) { title.current?.focus({ preventScroll: true }); dialog.current?.querySelector(".question")?.scrollTo({ top: 0, behavior: "instant" }); } }, [step, started]);
+  }, [active]);
+  useEffect(() => { if (active) { title.current?.focus({ preventScroll: true }); dialog.current?.querySelector(".question")?.scrollTo({ top: 0, behavior: "instant" }); } }, [step, active]);
   useEffect(() => { if (finished) resultCard.current?.scrollIntoView({ block: "start", behavior: "smooth" }); }, [finished]);
   function select(option: number) {
     setAnswers((previous) => previous.map((answer, index) => {
