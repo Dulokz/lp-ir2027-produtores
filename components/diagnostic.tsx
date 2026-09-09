@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowRight, ArrowLeft, Check, X, Wheat } from "lucide-react";
-import { questions, diagnose, type Answers } from "@/lib/diagnostic";
+import { ArrowRight, ArrowLeft, Check, MessageCircle, ShieldCheck, X, Wheat } from "lucide-react";
+import { questions, diagnose, whatsappUrl, type Answers } from "@/lib/diagnostic";
 import * as analytics from "./analytics";
+import { getUtms } from "./analytics";
 import Brand from "./brand";
 import { trackVercelEvent } from "@/lib/vercel-analytics";
 
@@ -16,11 +16,12 @@ function preliminaryDiagnosis(answers: Answers) {
 
 export default function Diagnostic({ started, mode, onPause }: { started: boolean; mode: Mode; onPause: () => void }) {
   const trackEvent = (analytics as unknown as { trackMetaEvent?: (event: string, data?: Record<string, unknown>) => void; track?: (event: string, data?: Record<string, unknown>) => void }).trackMetaEvent ?? (analytics as unknown as { track: (event: string, data?: Record<string, unknown>) => void }).track;
-  const router = useRouter();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>(Array.from({ length: 8 }, () => []));
+  const [finished, setFinished] = useState<null | { answers: Answers; mode: Mode; result: ReturnType<typeof diagnose> | ReturnType<typeof preliminaryDiagnosis> }>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
+  const resultCard = useRef<HTMLElement>(null);
   const questionIndex = mode === "quick" ? quickQuestionIndexes[step] : step;
   const questionCount = mode === "quick" ? quickQuestionIndexes.length : questions.length;
 
@@ -36,6 +37,7 @@ export default function Diagnostic({ started, mode, onPause }: { started: boolea
     return () => { viewport?.removeEventListener("resize", resize); viewport?.removeEventListener("scroll", resize); element.close(); if (bodyStyle === null) document.body.removeAttribute("style"); else document.body.setAttribute("style", bodyStyle); document.documentElement.style.overflow = rootOverflow; window.scrollTo({ top: scrollY, behavior: "instant" }); };
   }, [started]);
   useEffect(() => { if (started) { title.current?.focus({ preventScroll: true }); dialog.current?.querySelector(".question")?.scrollTo({ top: 0, behavior: "instant" }); } }, [step, started]);
+  useEffect(() => { if (finished) resultCard.current?.scrollIntoView({ block: "start", behavior: "smooth" }); }, [finished]);
   function select(option: number) {
     setAnswers((previous) => previous.map((answer, index) => {
       if (index !== questionIndex) return answer;
@@ -50,13 +52,33 @@ export default function Diagnostic({ started, mode, onPause }: { started: boolea
     trackVercelEvent("DiagnosticStep", { step: step + 1, version: mode });
     if (step + 1 === questionCount) {
       const result = mode === "quick" ? preliminaryDiagnosis(answers) : diagnose(answers);
-      try { sessionStorage.setItem("jung-diagnostic-result", JSON.stringify({ mode, answers, result })); } catch {}
       trackEvent("CompleteDiagnostic", { version: mode });
       trackVercelEvent("CompleteDiagnostic", { version: mode });
-      router.push("/diagnostico-rural");
+      setFinished({ mode, answers, result });
       return;
     }
     setStep((current) => current + 1);
+  }
+  if (finished) {
+    const answerIndexes = finished.mode === "quick" ? quickQuestionIndexes : questions.map((_, index) => index);
+    const answerSummary = answerIndexes.map((index) => `${questions[index].title}\n${finished.answers[index].map((option) => questions[index].options[option]).join(", ")}`).join("\n\n");
+    const utms = getUtms();
+    const origin = utms.utm_campaign || utms.utm_source || "acesso direto";
+    const scoreMax = finished.mode === "quick" ? 80 : 100;
+    const message = `Olá! Vim da campanha ${origin} e ${finished.mode === "quick" ? "fiz o diagnóstico rápido" : "aprofundei meu diagnóstico"}.\n\nAtividade: ${questions[0].options[finished.answers[0][0]]}\n\nPrincipais respostas:\n${answerSummary}\n\nClassificação preliminar: ${finished.result.level} (${finished.result.score}/${scoreMax}).\n\nQuero revisar minha situação no WhatsApp.`;
+    const headline = finished.result.level === "Risco" ? "Ainda dá tempo de evitar surpresas em 2027." : "Você já tem um ponto de partida. Agora, transforme isso em clareza.";
+    function contact() {
+      trackEvent("ContactWhatsApp", { placement: "diagnostic_result", version: finished!.mode });
+      trackVercelEvent("ContactWhatsApp", { placement: "diagnostic_result", version: finished!.mode });
+    }
+    return <section id="resultado" className="inline-result" ref={resultCard}>
+      <div className={`result-page-card ${finished.result.level === "Risco" ? "risk" : finished.result.level === "Atenção" ? "attention" : "good"}`}>
+        <div className="result-page-icon"><ShieldCheck size={28} /></div><span className="eyebrow">SUA SITUAÇÃO HOJE</span><h2>{headline}</h2>
+        <div className="result-page-score"><div className="score"><strong>{finished.result.score}</strong><span>/{scoreMax}</span></div><div><span className="eyebrow">CLASSIFICAÇÃO PRELIMINAR</span><strong className="status">{finished.result.level}</strong></div></div>
+        <p>Com base nas suas respostas, uma conversa agora pode ajudar a organizar sua atividade antes da declaração.</p>
+        <a className="button result-page-cta" href={whatsappUrl(message)} target="_blank" rel="noopener noreferrer" onClick={contact}><MessageCircle size={21} /> Quero revisar minha situação no WhatsApp <ArrowRight size={18} /></a><small>Você confere a mensagem antes de enviar no WhatsApp.</small>
+      </div>
+    </section>;
   }
   if (!started) return null;
   return <dialog ref={dialog} className="quiz-dialog" aria-labelledby="quiz-title" onCancel={(event) => { event.preventDefault(); onPause(); }}>
