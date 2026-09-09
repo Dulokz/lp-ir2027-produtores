@@ -1,453 +1,65 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowRight,
-  ArrowLeft,
-  Check,
-  ShieldCheck,
-  MessageCircle,
-  RotateCcw,
-  LockKeyhole,
-  X,
-  Wheat,
-} from "lucide-react";
-import {
-  questions,
-  diagnose,
-  states,
-  whatsappUrl,
-  type Answers,
-  type Lead,
-} from "@/lib/diagnostic";
-import { getUtms, track } from "./analytics";
+import { useRouter } from "next/navigation";
+import { ArrowRight, ArrowLeft, Check, X, Wheat } from "lucide-react";
+import { questions, diagnose, type Answers } from "@/lib/diagnostic";
+import { trackMetaEvent } from "./analytics";
 import Brand from "./brand";
-export default function Diagnostic({
-  started,
-  onStart,
-  onPause,
-}: {
-  started: boolean;
-  onStart: () => void;
-  onPause: () => void;
-}) {
+
+const quickQuestionIndexes = [0, 1, 3, 4] as const;
+type Mode = "quick" | "full";
+function preliminaryDiagnosis(answers: Answers) {
+  const score = 20 + [30, 15, 5, 0][answers[1][0]] + [20, 10, 0][answers[3][0]] + [10, 0, 0][answers[4][0]];
+  return { score, level: score >= 65 ? "Organizada" : score >= 40 ? "Atenção" : "Risco" };
+}
+
+export default function Diagnostic({ started, mode, onPause }: { started: boolean; mode: Mode; onPause: () => void }) {
+  const router = useRouter();
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Answers>(
-    Array.from({ length: 8 }, () => []),
-  );
-  const [lead, setLead] = useState<Lead>({
-    name: "",
-    phone: "",
-    city: "",
-    state: "SC",
-  });
-  const [done, setDone] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const card = useRef<HTMLDivElement>(null);
+  const [answers, setAnswers] = useState<Answers>(Array.from({ length: 8 }, () => []));
   const title = useRef<HTMLHeadingElement>(null);
-  const busy = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
-  const active = started && !done;
+  const questionIndex = mode === "quick" ? quickQuestionIndexes[step] : step;
+  const questionCount = mode === "quick" ? quickQuestionIndexes.length : questions.length;
+
   useEffect(() => {
-    if (!active || !dialog.current) return;
-    const element = dialog.current;
-    const scrollY = window.scrollY;
-    const bodyStyle = document.body.getAttribute("style");
-    const rootOverflow = document.documentElement.style.overflow;
+    if (!started || !dialog.current) return;
+    const element = dialog.current, scrollY = window.scrollY, bodyStyle = document.body.getAttribute("style"), rootOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = "hidden";
-    Object.assign(document.body.style, {
-      position: "fixed",
-      top: `-${scrollY}px`,
-      width: "100%",
-      overflow: "hidden",
-    });
+    Object.assign(document.body.style, { position: "fixed", top: `-${scrollY}px`, width: "100%", overflow: "hidden" });
     element.showModal();
     const viewport = window.visualViewport;
-    const resize = () => {
-      element.style.setProperty(
-        "--quiz-height",
-        `${viewport?.height ?? window.innerHeight}px`,
-      );
-      element.style.setProperty("--quiz-top", `${viewport?.offsetTop ?? 0}px`);
-    };
-    resize();
-    viewport?.addEventListener("resize", resize);
-    viewport?.addEventListener("scroll", resize);
-    return () => {
-      viewport?.removeEventListener("resize", resize);
-      viewport?.removeEventListener("scroll", resize);
-      element.close();
-      if (bodyStyle === null) document.body.removeAttribute("style");
-      else document.body.setAttribute("style", bodyStyle);
-      document.documentElement.style.overflow = rootOverflow;
-      window.scrollTo({ top: scrollY, behavior: "instant" });
-    };
-  }, [active]);
-  useEffect(() => {
-    if (started) {
-      title.current?.focus({ preventScroll: true });
-      if (done)
-        card.current?.scrollIntoView({ block: "start", behavior: "instant" });
-      dialog.current
-        ?.querySelector(".question")
-        ?.scrollTo({ top: 0, behavior: "instant" });
-    }
-  }, [step, done, started]);
-  const result = done ? diagnose(answers) : null;
-  function select(index: number) {
-    setAnswers((prev) =>
-      prev.map((a, i) => {
-        if (i !== step) return a;
-        if (step !== 7) return [index];
-        if (index >= 4) return a.includes(index) ? [] : [index];
-        return a.includes(index)
-          ? a.filter((n) => n !== index)
-          : [...a.filter((n) => n < 4), index];
-      }),
-    );
+    const resize = () => { element.style.setProperty("--quiz-height", `${viewport?.height ?? window.innerHeight}px`); element.style.setProperty("--quiz-top", `${viewport?.offsetTop ?? 0}px`); };
+    resize(); viewport?.addEventListener("resize", resize); viewport?.addEventListener("scroll", resize);
+    return () => { viewport?.removeEventListener("resize", resize); viewport?.removeEventListener("scroll", resize); element.close(); if (bodyStyle === null) document.body.removeAttribute("style"); else document.body.setAttribute("style", bodyStyle); document.documentElement.style.overflow = rootOverflow; window.scrollTo({ top: scrollY, behavior: "instant" }); };
+  }, [started]);
+  useEffect(() => { if (started) { title.current?.focus({ preventScroll: true }); dialog.current?.querySelector(".question")?.scrollTo({ top: 0, behavior: "instant" }); } }, [step, started]);
+  function select(option: number) {
+    setAnswers((previous) => previous.map((answer, index) => {
+      if (index !== questionIndex) return answer;
+      if (mode !== "full" || questionIndex !== 7) return [option];
+      if (option >= 4) return answer.includes(option) ? [] : [option];
+      return answer.includes(option) ? answer.filter((value) => value !== option) : [...answer.filter((value) => value < 4), option];
+    }));
   }
   function next() {
-    if (!answers[step].length) return;
-    track("DiagnosticStep", { step: step + 1 });
-    setStep((s) => s + 1);
-  }
-  async function finish(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (busy.current) return;
-    const phone = lead.phone.replace(/\D/g, "");
-    if (!/^(?:55)?[1-9]{2}9?\d{8}$/.test(phone)) {
-      setError("Informe um WhatsApp válido com DDD.");
+    if (!answers[questionIndex].length) return;
+    trackMetaEvent("DiagnosticStep", { step: step + 1, version: mode });
+    if (step + 1 === questionCount) {
+      const result = mode === "quick" ? preliminaryDiagnosis(answers) : diagnose(answers);
+      try { sessionStorage.setItem("jung-diagnostic-result", JSON.stringify({ mode, answers, result })); } catch {}
+      trackMetaEvent("CompleteDiagnostic", { version: mode });
+      router.push("/diagnostico-rural");
       return;
     }
-    if (lead.name.trim().length < 2 || lead.city.trim().length < 2) {
-      setError("Confira seu nome e município.");
-      return;
-    }
-    busy.current = true;
-    setError("");
-    setLoading(true);
-    try {
-      await fetch("/api/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...lead, answers, utms: getUtms() }),
-        signal: AbortSignal.timeout(5000),
-      });
-    } catch {
-      /* Lead storage is optional. WhatsApp remains available. */
-    }
-    track("CompleteDiagnostic");
-    track("Lead");
-    setLoading(false);
-    setDone(true);
-    busy.current = false;
+    setStep((current) => current + 1);
   }
-  function contact() {
-    track("ContactWhatsApp", { placement: "result" });
-    try {
-      sessionStorage.setItem(
-        "jung-contact-origin",
-        JSON.stringify({ utms: getUtms(), at: new Date().toISOString() }),
-      );
-    } catch {}
-  }
-  const message = result
-    ? `Olá! Fiz o Diagnóstico Fiscal Rural 2026.\nNome: ${lead.name.trim()}\nAtividade: ${questions[0].options[answers[0][0]]}\nCidade: ${lead.city.trim()}/${lead.state}\nResultado: ${result.level} (${result.score}/100)\nGostaria de conversar sobre minha situação.`
-    : "";
-  return (
-    <section id="diagnostico" className="diagnostic-section">
-      <div className="section-heading">
-        <span className="eyebrow">UM POUCO DE CLAREZA, A PARTIR DE AGORA</span>
-        <h2>
-          Sua propriedade tem uma rotina.
-          <br />
-          Sua organização fiscal também?
-        </h2>
-        <p>
-          Responda algumas perguntas e descubra os pontos que merecem um olhar
-          mais próximo.
-        </p>
-      </div>
-      <div className="quiz-card" ref={card}>
-        {!started ? (
-          <div className="quiz-intro">
-            <span className="round-icon">
-              <ShieldCheck size={30} />
-            </span>
-            <span className="eyebrow">DIAGNÓSTICO FISCAL RURAL 2026</span>
-            <h3>
-              Como está a organização
-              <br />
-              da sua atividade rural?
-            </h3>
-            <p>8 perguntas simples. Sem precisar buscar documentos.</p>
-            <button className="button" onClick={onStart}>
-              Começar meu diagnóstico <ArrowRight size={19} />
-            </button>
-            <small>
-              <LockKeyhole size={14} /> Suas respostas são tratadas com cuidado.
-            </small>
-          </div>
-        ) : result ? (
-          <div
-            className={`result ${result.level === "Organizada" ? "good" : result.level === "Atenção" ? "attention" : "risk"}`}
-          >
-            <div className="quiz-top">
-              <span>SEU DIAGNÓSTICO</span>
-              <ShieldCheck size={20} />
-            </div>
-            <h3 ref={title} tabIndex={-1}>
-              {lead.name.trim().split(" ")[0]}, este é o seu ponto de partida.
-            </h3>
-            <div className="result-main">
-              <div className="score">
-                <strong>{result.score}</strong>
-                <span>/100</span>
-              </div>
-              <div>
-                <span className="eyebrow">
-                  ÍNDICE DE ORGANIZAÇÃO FISCAL RURAL
-                </span>
-                <span className="status">{result.level}</span>
-              </div>
-            </div>
-            <h4>{result.title}</h4>
-            <p>
-              Com base nas suas respostas, identificamos sinais sobre a
-              organização da sua atividade.
-            </p>
-            <ul className="insights">
-              {result.insights.map((item) => (
-                <li key={item}>
-                  <Check size={18} />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="disclaimer">
-              Este índice é orientativo e considera apenas suas respostas. Não
-              calcula imposto, não garante regularidade fiscal e não substitui
-              uma análise contábil individual.
-            </p>
-            <a
-              className="button"
-              href={whatsappUrl(message)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={contact}
-            >
-              <MessageCircle size={21} /> Quero revisar minha situação com o
-              Grupo Jung <ArrowRight size={18} />
-            </a>
-            <small>Você confere a mensagem antes de enviar no WhatsApp.</small>
-            <button
-              className="text-button"
-              onClick={() => {
-                setDone(false);
-                setStep(0);
-                track("StartDiagnostic", { restart: true });
-              }}
-            >
-              <RotateCcw size={15} /> Revisar minhas respostas
-            </button>
-          </div>
-        ) : (
-          <dialog
-            ref={dialog}
-            className="quiz-dialog"
-            aria-labelledby="quiz-title"
-            onCancel={(e) => {
-              e.preventDefault();
-              onPause();
-            }}
-          >
-            <div className="quiz-dialog-brand">
-              <Brand />
-              <button
-                type="button"
-                className="quiz-close"
-                aria-label="Sair do diagnóstico e continuar depois"
-                onClick={onPause}
-              >
-                <X size={21} />
-              </button>
-            </div>
-            <form onSubmit={finish}>
-              <div className="quiz-rural-label">
-                <Wheat size={16} /> Diagnóstico fiscal do produtor rural
-              </div>
-              <div className="quiz-top">
-                <span>
-                  {step < 8 ? `PERGUNTA ${step + 1} DE 8` : "ÚLTIMO PASSO"}
-                </span>
-                <span>
-                  {step < 8
-                    ? "Sobre sua atividade"
-                    : "Seu resultado está quase pronto"}
-                </span>
-              </div>
-              <div
-                className="progress"
-                role="progressbar"
-                aria-label="Progresso do diagnóstico"
-                aria-valuemin={0}
-                aria-valuemax={9}
-                aria-valuenow={step}
-              >
-                <div style={{ width: `${(step / 9) * 100}%` }} />
-              </div>
-              <div className="question" key={step}>
-                <h3 id="quiz-title" ref={title} tabIndex={-1}>
-                  {step < 8
-                    ? questions[step].title
-                    : "Como podemos chamar você?"}
-                </h3>
-                <p>
-                  {step === 7
-                    ? "Pode marcar mais de uma opção."
-                    : step < 8
-                      ? "Selecione a opção que mais combina com sua realidade."
-                      : "Preencha seus dados para ver o resultado e conversar com nossa equipe."}
-                </p>
-                {step < 8 ? (
-                  <div
-                    className={`options ${step === 0 ? "activities" : ""}`}
-                    role="group"
-                    aria-label={questions[step].title}
-                  >
-                    {questions[step].options.map((option, i) => (
-                      <button
-                        type="button"
-                        aria-pressed={answers[step].includes(i)}
-                        className={answers[step].includes(i) ? "selected" : ""}
-                        key={option}
-                        onClick={() => select(i)}
-                      >
-                        <span className="option-check">
-                          {answers[step].includes(i) ? (
-                            <Check size={15} />
-                          ) : (
-                            String.fromCharCode(65 + i)
-                          )}
-                        </span>
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="lead-fields">
-                    <label>
-                      Seu nome
-                      <input
-                        autoComplete="name"
-                        required
-                        minLength={2}
-                        maxLength={100}
-                        value={lead.name}
-                        onChange={(e) =>
-                          setLead({ ...lead, name: e.target.value })
-                        }
-                        placeholder="Como você gosta de ser chamado"
-                      />
-                    </label>
-                    <label>
-                      WhatsApp com DDD
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        autoComplete="tel"
-                        required
-                        maxLength={20}
-                        value={lead.phone}
-                        onChange={(e) =>
-                          setLead({ ...lead, phone: e.target.value })
-                        }
-                        placeholder="(49) 99999-9999"
-                      />
-                    </label>
-                    <div className="location-fields">
-                      <label>
-                        Município
-                        <input
-                          autoComplete="address-level2"
-                          required
-                          minLength={2}
-                          maxLength={100}
-                          value={lead.city}
-                          onChange={(e) =>
-                            setLead({ ...lead, city: e.target.value })
-                          }
-                          placeholder="Seu município"
-                        />
-                      </label>
-                      <label>
-                        Estado
-                        <select
-                          autoComplete="address-level1"
-                          value={lead.state}
-                          onChange={(e) =>
-                            setLead({ ...lead, state: e.target.value })
-                          }
-                        >
-                          {states.map((s) => (
-                            <option key={s}>{s}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    <p className="privacy-note">
-                      <LockKeyhole size={16} /> Seus dados serão utilizados
-                      apenas para contato sobre o diagnóstico e os serviços do
-                      Grupo Jung.{" "}
-                      <a
-                        href="/privacidade"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Privacidade
-                      </a>
-                    </p>
-                  </div>
-                )}
-                {error && (
-                  <p role="alert" className="error">
-                    {error}
-                  </p>
-                )}
-              </div>
-              <div className="quiz-bottom">
-                <button
-                  type="button"
-                  className="text-button"
-                  disabled={step === 0 || loading}
-                  onClick={() => setStep((s) => s - 1)}
-                >
-                  <ArrowLeft size={17} /> Voltar
-                </button>
-                {step < 8 ? (
-                  <button
-                    type="button"
-                    className="button"
-                    disabled={!answers[step].length}
-                    onClick={next}
-                  >
-                    Continuar <ArrowRight size={18} />
-                  </button>
-                ) : (
-                  <button className="button" disabled={loading} type="submit">
-                    {loading ? "Preparando resultado…" : "Ver meu resultado"}
-                    <ArrowRight size={18} />
-                  </button>
-                )}
-              </div>
-            </form>
-          </dialog>
-        )}
-      </div>
-      <p className="under-quiz">
-        <ShieldCheck size={16} /> Sem documentos. Sem cálculo de imposto. Um
-        primeiro olhar para a sua organização.
-      </p>
-    </section>
-  );
+  if (!started) return null;
+  return <dialog ref={dialog} className="quiz-dialog" aria-labelledby="quiz-title" onCancel={(event) => { event.preventDefault(); onPause(); }}>
+    <div className="quiz-dialog-brand"><Brand /><button type="button" className="quiz-close" aria-label="Sair do diagnóstico e continuar depois" onClick={onPause}><X size={21} /></button></div>
+    <div className="quiz-dialog-content"><div className="quiz-rural-label"><Wheat size={16} /> {mode === "quick" ? "Diagnóstico rápido do produtor rural" : "Diagnóstico fiscal completo do produtor rural"}</div><div className="quiz-top"><span>PERGUNTA {step + 1} DE {questionCount}</span><span>Sobre sua atividade</span></div><div className="progress" role="progressbar" aria-label="Progresso do diagnóstico" aria-valuemin={0} aria-valuemax={questionCount} aria-valuenow={step + 1}><div style={{ width: `${((step + 1) / questionCount) * 100}%` }} /></div>
+      <div className="question" key={step}><h3 id="quiz-title" ref={title} tabIndex={-1}>{questions[questionIndex].title}</h3><p>{mode === "full" && questionIndex === 7 ? "Pode marcar mais de uma opção." : "Selecione a opção que mais combina com sua realidade."}</p><div className={`options ${questionIndex === 0 ? "activities" : ""}`} role="group" aria-label={questions[questionIndex].title}>{questions[questionIndex].options.map((option, index) => <button type="button" aria-pressed={answers[questionIndex].includes(index)} className={answers[questionIndex].includes(index) ? "selected" : ""} key={option} onClick={() => select(index)}><span className="option-check">{answers[questionIndex].includes(index) ? <Check size={15} /> : String.fromCharCode(65 + index)}</span>{option}</button>)}</div></div>
+      <div className="quiz-bottom"><button type="button" className="text-button" disabled={step === 0} onClick={() => setStep((current) => current - 1)}><ArrowLeft size={17} /> Voltar</button><button type="button" className="button" disabled={!answers[questionIndex].length} onClick={next}>{step + 1 === questionCount ? "Ver minha situação" : "Continuar"} <ArrowRight size={18} /></button></div>
+    </div>
+  </dialog>;
 }

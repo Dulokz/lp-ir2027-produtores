@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import Diagnostic from "@/components/diagnostic";
 import Brand from "@/components/brand";
-import Analytics, { track, getUtms } from "@/components/analytics";
+import { getUtms, trackMetaEvent } from "@/components/analytics";
 import { whatsappUrl } from "@/lib/diagnostic";
 const services = [
   { icon: FileText, name: "Notas fiscais", text: "Documentos no lugar certo." },
@@ -49,10 +49,12 @@ const services = [
 ];
 export default function Home() {
   const [started, setStarted] = useState(false);
-  function start() {
+  const [diagnosticMode, setDiagnosticMode] = useState<"quick" | "full">("quick");
+  function start(mode: "quick" | "full" = "quick") {
+    setDiagnosticMode(mode);
     if (!started) {
       setStarted(true);
-      track("StartDiagnostic");
+      trackMetaEvent("StartDiagnostic");
       return;
     }
     document.getElementById("diagnostico")?.scrollIntoView({
@@ -62,8 +64,8 @@ export default function Home() {
       block: "start",
     });
   }
-  function contact() {
-    track("ContactWhatsApp", { placement: "footer" });
+  function contact(placement = "footer") {
+    trackMetaEvent("ContactWhatsApp", { placement });
     try {
       sessionStorage.setItem(
         "jung-contact-origin",
@@ -71,9 +73,17 @@ export default function Home() {
       );
     } catch {}
   }
+  function whatsappContact(
+    event: React.MouseEvent<HTMLAnchorElement>,
+    placement: string,
+  ) {
+    event.currentTarget.href = whatsappUrl(
+      "Olá! Gostaria de conversar sobre o acompanhamento contabil da minha atividade rural..",
+    );
+    contact(placement);
+  }
   return (
     <>
-      <Analytics />
       <a className="skip-link" href="#main">
         Pular para o conteúdo
       </a>
@@ -113,9 +123,20 @@ export default function Home() {
                   pode ser tarde.
                 </strong>
               </p>
-              <button className="button hero-button" onClick={start}>
-                Ver como está minha situação <ArrowRight size={20} />
-              </button>
+              <div className="hero-actions">
+                <a
+                  className="button hero-button whatsapp-button"
+                  href={whatsappUrl("Olá! Gostaria de conversar sobre minha atividade rural.")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(event) => whatsappContact(event, "hero")}
+                >
+                  <MessageCircle size={20} /> Falar agora no WhatsApp
+                </a>
+                <button className="button hero-diagnostic-button" onClick={() => start()}>
+                  Ver minha situação em 4 perguntas <ArrowRight size={20} />
+                </button>
+              </div>
               <div className="hero-reassurance">
                 <span>
                   <Clock3 size={15} /> Leva menos de 2 minutos.
@@ -202,7 +223,13 @@ export default function Home() {
           </div>
           <div className="hero-footer">
             <span>DA PORTEIRA PARA DENTRO, CADA DECISÃO CONTA.</span>
-            <a href="#diagnostico">
+            <a
+              href="#diagnostico"
+              onClick={(event) => {
+                event.preventDefault();
+                start();
+              }}
+            >
               Comece pela sua organização <ArrowRight size={16} />
             </a>
           </div>
@@ -228,8 +255,9 @@ export default function Home() {
           </div>
         </div>
         <Diagnostic
+          key={diagnosticMode}
           started={started}
-          onStart={start}
+          mode={diagnosticMode}
           onPause={() => setStarted(false)}
         />
         <section className="year-section content-width">
@@ -293,7 +321,7 @@ export default function Home() {
                   <Check size={17} /> Informação perto de você
                 </li>
               </ul>
-              <button className="text-button" onClick={start}>
+              <button className="text-button" onClick={() => start()}>
                 Descobrir meu ponto de partida <ArrowUpRight size={18} />
               </button>
             </div>
@@ -408,8 +436,11 @@ export default function Home() {
           <p>
             Em menos de 2 minutos, comece a olhar para 2026 com mais clareza.
           </p>
-          <button className="button" onClick={start}>
+          <button className="button" onClick={() => start()}>
             Fazer meu Diagnóstico Fiscal Rural 2026 <ArrowRight size={19} />
+          </button>
+          <button className="text-button final-full-diagnostic" onClick={() => start("full")}>
+            Quero aprofundar meu diagnóstico <ArrowRight size={16} />
           </button>
           <a
             className="direct-whatsapp"
@@ -418,12 +449,21 @@ export default function Home() {
             )}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={contact}
+            onClick={(event) => whatsappContact(event, "footer")}
           >
             <MessageCircle size={18} /> Falar diretamente pelo WhatsApp
           </a>
         </section>
       </main>
+      <a
+        className="mobile-whatsapp-sticky"
+        href={whatsappUrl("Olá! Gostaria de conversar sobre minha atividade rural.")}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(event) => whatsappContact(event, "mobile_sticky")}
+      >
+        <MessageCircle size={20} /> Falar no WhatsApp
+      </a>
       <footer className="footer">
         <Link className="brand" href="/">
           <Brand />
