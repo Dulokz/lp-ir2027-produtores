@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
 import "./globals.css";
+import Analytics from "@/components/analytics";
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "https://rural.grupojung.com.br",
@@ -22,7 +24,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        <Analytics />
+        {children}
+        <VercelAnalytics />
+      </body>
     </html>
   );
 }

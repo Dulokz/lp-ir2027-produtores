@@ -24,6 +24,7 @@ import Brand from "@/components/brand";
 import { getUtms } from "@/components/analytics";
 import * as analytics from "@/components/analytics";
 import { whatsappUrl } from "@/lib/diagnostic";
+import { trackVercelEvent } from "@/lib/vercel-analytics";
 const services = [
   { icon: FileText, name: "Notas fiscais", text: "Documentos no lugar certo." },
   {
@@ -57,6 +58,7 @@ export default function Home() {
     if (!started) {
       setStarted(true);
       trackEvent("StartDiagnostic");
+      trackVercelEvent("StartDiagnostic");
       return;
     }
     document.getElementById("diagnostico")?.scrollIntoView({
@@ -68,6 +70,7 @@ export default function Home() {
   }
   function contact(placement = "footer") {
     trackEvent("ContactWhatsApp", { placement });
+    trackVercelEvent("ContactWhatsApp", { placement });
     try {
       sessionStorage.setItem(
         "jung-contact-origin",

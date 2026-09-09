@@ -5,6 +5,7 @@ import { ArrowRight, ArrowLeft, Check, X, Wheat } from "lucide-react";
 import { questions, diagnose, type Answers } from "@/lib/diagnostic";
 import * as analytics from "./analytics";
 import Brand from "./brand";
+import { trackVercelEvent } from "@/lib/vercel-analytics";
 
 const quickQuestionIndexes = [0, 1, 3, 4] as const;
 type Mode = "quick" | "full";
@@ -46,10 +47,12 @@ export default function Diagnostic({ started, mode, onPause }: { started: boolea
   function next() {
     if (!answers[questionIndex].length) return;
     trackEvent("DiagnosticStep", { step: step + 1, version: mode });
+    trackVercelEvent("DiagnosticStep", { step: step + 1, version: mode });
     if (step + 1 === questionCount) {
       const result = mode === "quick" ? preliminaryDiagnosis(answers) : diagnose(answers);
       try { sessionStorage.setItem("jung-diagnostic-result", JSON.stringify({ mode, answers, result })); } catch {}
       trackEvent("CompleteDiagnostic", { version: mode });
+      trackVercelEvent("CompleteDiagnostic", { version: mode });
       router.push("/diagnostico-rural");
       return;
     }

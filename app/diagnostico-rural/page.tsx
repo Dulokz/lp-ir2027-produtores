@@ -5,6 +5,7 @@ import { diagnose, questions, whatsappUrl, type Answers } from "@/lib/diagnostic
 import { getUtms } from "@/components/analytics";
 import * as analytics from "@/components/analytics";
 import Brand from "@/components/brand";
+import { trackVercelEvent } from "@/lib/vercel-analytics";
 
 type Mode = "quick" | "full";
 type StoredDiagnostic = { mode: Mode; answers: Answers };
@@ -42,6 +43,7 @@ export default function DiagnosticResultPage() {
   const headline = result.level === "Risco" ? "Ainda dá tempo de evitar surpresas em 2027." : "Você já tem um ponto de partida. Agora, transforme isso em clareza.";
   function contact() {
     trackEvent("ContactWhatsApp", { placement: "diagnostic_result_page", version: data!.mode });
+    trackVercelEvent("ContactWhatsApp", { placement: "diagnostic_result_page", version: data!.mode });
     try { sessionStorage.setItem("jung-contact-origin", JSON.stringify({ utms, at: new Date().toISOString() })); } catch {}
   }
   return <main className="result-page">
