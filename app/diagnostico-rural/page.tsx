@@ -2,7 +2,8 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { ArrowRight, MessageCircle, ShieldCheck } from "lucide-react";
 import { diagnose, questions, whatsappUrl, type Answers } from "@/lib/diagnostic";
-import { getUtms, trackMetaEvent } from "@/components/analytics";
+import { getUtms } from "@/components/analytics";
+import * as analytics from "@/components/analytics";
 import Brand from "@/components/brand";
 
 type Mode = "quick" | "full";
@@ -26,6 +27,7 @@ function getStoredDiagnostic() {
 }
 
 export default function DiagnosticResultPage() {
+  const trackEvent = (analytics as unknown as { trackMetaEvent?: (event: string, data?: Record<string, unknown>) => void; track?: (event: string, data?: Record<string, unknown>) => void }).trackMetaEvent ?? (analytics as unknown as { track: (event: string, data?: Record<string, unknown>) => void }).track;
   const data = useSyncExternalStore(subscribe, getStoredDiagnostic, () => null);
   useEffect(() => {
     if (!data) window.location.replace("/");
@@ -39,7 +41,7 @@ export default function DiagnosticResultPage() {
   const message = `Olá! Vim da campanha ${origin} e ${data.mode === "quick" ? "fiz o diagnóstico rápido" : "aprofundei meu diagnóstico"}.\n\nAtividade: ${questions[0].options[data.answers[0][0]]}\n\nPrincipais respostas:\n${answerSummary}\n\nClassificação preliminar: ${result.level} (${result.score}/${data.mode === "quick" ? 80 : 100}).\n\nQuero revisar minha situação no WhatsApp.`;
   const headline = result.level === "Risco" ? "Ainda dá tempo de evitar surpresas em 2027." : "Você já tem um ponto de partida. Agora, transforme isso em clareza.";
   function contact() {
-    trackMetaEvent("ContactWhatsApp", { placement: "diagnostic_result_page", version: data!.mode });
+    trackEvent("ContactWhatsApp", { placement: "diagnostic_result_page", version: data!.mode });
     try { sessionStorage.setItem("jung-contact-origin", JSON.stringify({ utms, at: new Date().toISOString() })); } catch {}
   }
   return <main className="result-page">

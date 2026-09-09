@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 import Diagnostic from "@/components/diagnostic";
 import Brand from "@/components/brand";
-import { getUtms, trackMetaEvent } from "@/components/analytics";
+import { getUtms } from "@/components/analytics";
+import * as analytics from "@/components/analytics";
 import { whatsappUrl } from "@/lib/diagnostic";
 const services = [
   { icon: FileText, name: "Notas fiscais", text: "Documentos no lugar certo." },
@@ -48,13 +49,14 @@ const services = [
   },
 ];
 export default function Home() {
+  const trackEvent = (analytics as unknown as { trackMetaEvent?: (event: string, data?: Record<string, unknown>) => void; track?: (event: string, data?: Record<string, unknown>) => void }).trackMetaEvent ?? (analytics as unknown as { track: (event: string, data?: Record<string, unknown>) => void }).track;
   const [started, setStarted] = useState(false);
   const [diagnosticMode, setDiagnosticMode] = useState<"quick" | "full">("quick");
   function start(mode: "quick" | "full" = "quick") {
     setDiagnosticMode(mode);
     if (!started) {
       setStarted(true);
-      trackMetaEvent("StartDiagnostic");
+      trackEvent("StartDiagnostic");
       return;
     }
     document.getElementById("diagnostico")?.scrollIntoView({
@@ -65,7 +67,7 @@ export default function Home() {
     });
   }
   function contact(placement = "footer") {
-    trackMetaEvent("ContactWhatsApp", { placement });
+    trackEvent("ContactWhatsApp", { placement });
     try {
       sessionStorage.setItem(
         "jung-contact-origin",

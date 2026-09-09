@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ArrowLeft, Check, X, Wheat } from "lucide-react";
 import { questions, diagnose, type Answers } from "@/lib/diagnostic";
-import { trackMetaEvent } from "./analytics";
+import * as analytics from "./analytics";
 import Brand from "./brand";
 
 const quickQuestionIndexes = [0, 1, 3, 4] as const;
@@ -14,6 +14,7 @@ function preliminaryDiagnosis(answers: Answers) {
 }
 
 export default function Diagnostic({ started, mode, onPause }: { started: boolean; mode: Mode; onPause: () => void }) {
+  const trackEvent = (analytics as unknown as { trackMetaEvent?: (event: string, data?: Record<string, unknown>) => void; track?: (event: string, data?: Record<string, unknown>) => void }).trackMetaEvent ?? (analytics as unknown as { track: (event: string, data?: Record<string, unknown>) => void }).track;
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>(Array.from({ length: 8 }, () => []));
@@ -44,11 +45,11 @@ export default function Diagnostic({ started, mode, onPause }: { started: boolea
   }
   function next() {
     if (!answers[questionIndex].length) return;
-    trackMetaEvent("DiagnosticStep", { step: step + 1, version: mode });
+    trackEvent("DiagnosticStep", { step: step + 1, version: mode });
     if (step + 1 === questionCount) {
       const result = mode === "quick" ? preliminaryDiagnosis(answers) : diagnose(answers);
       try { sessionStorage.setItem("jung-diagnostic-result", JSON.stringify({ mode, answers, result })); } catch {}
-      trackMetaEvent("CompleteDiagnostic", { version: mode });
+      trackEvent("CompleteDiagnostic", { version: mode });
       router.push("/diagnostico-rural");
       return;
     }
